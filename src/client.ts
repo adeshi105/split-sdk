@@ -7846,6 +7846,82 @@ export class StellarSplitClient extends TypedEventEmitter<SplitClientEventMap> {
   }
 
   // ---------------------------------------------------------------------------
+  // Issue #869 — Delegate management
+  // ---------------------------------------------------------------------------
+
+  async addDelegate(invoiceId: string, delegate: string): Promise<TxResult> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "add_delegate",
+        nativeToScVal(invoiceId, { type: "u64" }),
+        nativeToScVal(delegate, { type: "address" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      telemetry.recordMethod("addDelegate", true, Date.now() - startTime);
+      return { txHash: result.txHash };
+    } catch (error) {
+      telemetry.recordMethod("addDelegate", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async removeDelegate(invoiceId: string, delegate: string): Promise<TxResult> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "remove_delegate",
+        nativeToScVal(invoiceId, { type: "u64" }),
+        nativeToScVal(delegate, { type: "address" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      telemetry.recordMethod("removeDelegate", true, Date.now() - startTime);
+      return { txHash: result.txHash };
+    } catch (error) {
+      telemetry.recordMethod("removeDelegate", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async isDelegate(invoiceId: string, address: string): Promise<boolean> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "is_delegate",
+        nativeToScVal(invoiceId, { type: "u64" }),
+        nativeToScVal(address, { type: "address" }),
+      );
+
+      const result = await this._simulateView(operation);
+      const isDelegate = Boolean(result);
+      telemetry.recordMethod("isDelegate", true, Date.now() - startTime);
+      return isDelegate;
+    } catch (error) {
+      telemetry.recordMethod("isDelegate", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async getDelegates(invoiceId: string): Promise<string[]> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "get_delegates",
+        nativeToScVal(invoiceId, { type: "u64" }),
+      );
+
+      const raw = (await this._simulateView(operation)) as string[];
+      telemetry.recordMethod("getDelegates", true, Date.now() - startTime);
+      return raw || [];
+    } catch (error) {
+      telemetry.recordMethod("getDelegates", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
 
