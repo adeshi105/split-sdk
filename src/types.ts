@@ -2150,3 +2150,12 @@ export interface ClaimableBalanceRecord {
   /** Ledger sequence after which the predicate expires (optional). */
   predicateExpiryLedger?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Pause/Resume Types (Issue #866)
+// ---------------------------------------------------------------------------
+
+export interface PauseStatus {
+  paused: boolean;
+  autoResumeAt?: Date;
+}

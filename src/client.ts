@@ -156,6 +156,7 @@ import type {
   BridgePaymentParams,
   BridgePaymentRequest,
   SignedBridgeProof,
+  PauseStatus,
 } from "./types.js";
 import {
   estimateBridgeFee as _estimateBridgeFee,
@@ -7614,6 +7615,75 @@ export class StellarSplitClient extends TypedEventEmitter<SplitClientEventMap> {
         false,
         Date.now() - startTime,
       );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Issue #866 — Pause/Resume invoice
+  // ---------------------------------------------------------------------------
+
+  async pauseInvoice(
+    invoiceId: string,
+    options?: { autoResumeAt?: Date },
+  ): Promise<TxResult> {
+    const startTime = Date.now();
+    try {
+      const autoResumeTimestamp = options?.autoResumeAt
+        ? Math.floor(options.autoResumeAt.getTime() / 1000)
+        : 0;
+
+      const operation = this.contract.call(
+        "pause_invoice",
+        nativeToScVal(invoiceId, { type: "u64" }),
+        nativeToScVal(autoResumeTimestamp, { type: "u64" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      telemetry.recordMethod("pauseInvoice", true, Date.now() - startTime);
+      return { txHash: result.txHash };
+    } catch (error) {
+      telemetry.recordMethod("pauseInvoice", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async resumeInvoice(invoiceId: string): Promise<TxResult> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "resume_invoice",
+        nativeToScVal(invoiceId, { type: "u64" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      telemetry.recordMethod("resumeInvoice", true, Date.now() - startTime);
+      return { txHash: result.txHash };
+    } catch (error) {
+      telemetry.recordMethod("resumeInvoice", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async isPaused(invoiceId: string): Promise<PauseStatus> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "is_paused",
+        nativeToScVal(invoiceId, { type: "u64" }),
+      );
+
+      const raw = (await this._simulateView(operation)) as Record<string, unknown>;
+      const paused = Boolean(raw.paused);
+      const autoResumeTimestamp = Number(raw.autoResumeAt ?? raw.auto_resume_at ?? 0);
+
+      telemetry.recordMethod("isPaused", true, Date.now() - startTime);
+      return {
+        paused,
+        autoResumeAt: autoResumeTimestamp > 0 ? new Date(autoResumeTimestamp * 1000) : undefined,
+      };
+    } catch (error) {
+      telemetry.recordMethod("isPaused", false, Date.now() - startTime);
       throw error;
     }
   }

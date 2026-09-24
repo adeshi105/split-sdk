@@ -105,6 +105,10 @@ export {
   PathRouterError,
   OfferTrackingError,
   ClaimableBalanceLifecycleError,
+  InvoiceFullyFundedError,
+  isInvoiceFullyFundedError,
+  DelegateLimitReachedError,
+  isDelegateLimitReachedError,
   isInvoiceNotFoundError,
   isInvoiceNotPendingError,
   isDeadlinePassedError,
@@ -849,6 +853,9 @@ export type {
 export { trackVelocity } from "./velocityTracker.js";
 export type { VelocityReport, InvoiceVelocity, PaymentTrend } from "./velocityTracker.js";
 export type { VelocityStatus, VelocityWindowStatus } from "./types.js";
+
+// Issue #866 — Pause/Resume invoice
+export type { PauseStatus } from "./types.js";
 
 // Tranche release progress tracking
 export { getTrancheProgress } from "./trancheProgress.js";

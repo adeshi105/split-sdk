@@ -2251,3 +2251,43 @@ export function isWalletConnectionTimeoutError(err: unknown): err is WalletConne
   return err instanceof WalletConnectionTimeoutError;
 }
 
+/** Thrown when attempting to pledge on a fully funded invoice. */
+export class InvoiceFullyFundedError extends StellarSplitError {
+  readonly invoiceId: string;
+
+  constructor(invoiceId: string) {
+    super(`Invoice ${invoiceId} is already fully funded`, "INVOICE_FULLY_FUNDED", {
+      invoiceId,
+    });
+    this.name = "InvoiceFullyFundedError";
+    this.invoiceId = invoiceId;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+export function isInvoiceFullyFundedError(err: unknown): err is InvoiceFullyFundedError {
+  return err instanceof InvoiceFullyFundedError;
+}
+
+/** Thrown when delegate limit is reached. */
+export class DelegateLimitReachedError extends StellarSplitError {
+  readonly invoiceId: string;
+  readonly limit: number;
+
+  constructor(invoiceId: string, limit: number = 3) {
+    super(
+      `Invoice ${invoiceId} has reached the delegate limit of ${limit}`,
+      "DELEGATE_LIMIT_REACHED",
+      { invoiceId, limit },
+    );
+    this.name = "DelegateLimitReachedError";
+    this.invoiceId = invoiceId;
+    this.limit = limit;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+export function isDelegateLimitReachedError(err: unknown): err is DelegateLimitReachedError {
+  return err instanceof DelegateLimitReachedError;
+}
+
