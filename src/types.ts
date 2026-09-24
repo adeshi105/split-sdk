@@ -2159,3 +2159,14 @@ export interface PauseStatus {
   paused: boolean;
   autoResumeAt?: Date;
 }
+
+// ---------------------------------------------------------------------------
+// Pledge Match Types (Issue #867)
+// ---------------------------------------------------------------------------
+
+export interface MatchPledge {
+  matcher: string;
+  pledgedAmount: bigint;
+  matchedAmount: bigint;
+  unmatched: bigint;
+}

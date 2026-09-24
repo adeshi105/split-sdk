@@ -857,6 +857,9 @@ export type { VelocityStatus, VelocityWindowStatus } from "./types.js";
 // Issue #866 — Pause/Resume invoice
 export type { PauseStatus } from "./types.js";
 
+// Issue #867 — Pledge matching
+export type { MatchPledge } from "./types.js";
+
 // Tranche release progress tracking
 export { getTrancheProgress } from "./trancheProgress.js";
 export type {

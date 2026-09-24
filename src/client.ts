@@ -157,6 +157,7 @@ import type {
   BridgePaymentRequest,
   SignedBridgeProof,
   PauseStatus,
+  MatchPledge,
 } from "./types.js";
 import {
   estimateBridgeFee as _estimateBridgeFee,
@@ -7684,6 +7685,70 @@ export class StellarSplitClient extends TypedEventEmitter<SplitClientEventMap> {
       };
     } catch (error) {
       telemetry.recordMethod("isPaused", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Issue #867 — Pledge matching
+  // ---------------------------------------------------------------------------
+
+  async pledgeMatch(invoiceId: string, amount: bigint): Promise<TxResult> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "pledge_match",
+        nativeToScVal(invoiceId, { type: "u64" }),
+        nativeToScVal(amount, { type: "i128" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      telemetry.recordMethod("pledgeMatch", true, Date.now() - startTime);
+      return { txHash: result.txHash };
+    } catch (error) {
+      telemetry.recordMethod("pledgeMatch", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async claimUnmatchedPledge(invoiceId: string): Promise<bigint> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "claim_unmatched_pledge",
+        nativeToScVal(invoiceId, { type: "u64" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      const amount = scValToNative(result.returnValue) as bigint;
+      telemetry.recordMethod("claimUnmatchedPledge", true, Date.now() - startTime);
+      return amount;
+    } catch (error) {
+      telemetry.recordMethod("claimUnmatchedPledge", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async getMatchPool(invoiceId: string): Promise<MatchPledge[]> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "get_match_pool",
+        nativeToScVal(invoiceId, { type: "u64" }),
+      );
+
+      const raw = (await this._simulateView(operation)) as Array<Record<string, unknown>>;
+      const pledges: MatchPledge[] = (raw || []).map((p) => ({
+        matcher: p.matcher as string,
+        pledgedAmount: toBigInt(p.pledgedAmount ?? p.pledged_amount),
+        matchedAmount: toBigInt(p.matchedAmount ?? p.matched_amount),
+        unmatched: toBigInt(p.unmatched),
+      }));
+
+      telemetry.recordMethod("getMatchPool", true, Date.now() - startTime);
+      return pledges;
+    } catch (error) {
+      telemetry.recordMethod("getMatchPool", false, Date.now() - startTime);
       throw error;
     }
   }
