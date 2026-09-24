@@ -860,6 +860,9 @@ export type { PauseStatus } from "./types.js";
 // Issue #867 — Pledge matching
 export type { MatchPledge } from "./types.js";
 
+// Issue #868 — Streaming payments
+export type { Stream } from "./types.js";
+
 // Tranche release progress tracking
 export { getTrancheProgress } from "./trancheProgress.js";
 export type {

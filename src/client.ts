@@ -158,6 +158,7 @@ import type {
   SignedBridgeProof,
   PauseStatus,
   MatchPledge,
+  Stream,
 } from "./types.js";
 import {
   estimateBridgeFee as _estimateBridgeFee,
@@ -7751,6 +7752,97 @@ export class StellarSplitClient extends TypedEventEmitter<SplitClientEventMap> {
       telemetry.recordMethod("getMatchPool", false, Date.now() - startTime);
       throw error;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Issue #868 — Streaming payments
+  // ---------------------------------------------------------------------------
+
+  async startStream(invoiceId: string, amountPerLedger: bigint): Promise<string> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "start_stream",
+        nativeToScVal(invoiceId, { type: "u64" }),
+        nativeToScVal(amountPerLedger, { type: "i128" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      const streamId = scValToNative(result.returnValue).toString();
+      telemetry.recordMethod("startStream", true, Date.now() - startTime);
+      return streamId;
+    } catch (error) {
+      telemetry.recordMethod("startStream", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async settleStream(streamId: string): Promise<bigint> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "settle_stream",
+        nativeToScVal(streamId, { type: "u64" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      const amount = scValToNative(result.returnValue) as bigint;
+      telemetry.recordMethod("settleStream", true, Date.now() - startTime);
+      return amount;
+    } catch (error) {
+      telemetry.recordMethod("settleStream", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async cancelStream(streamId: string): Promise<bigint> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "cancel_stream",
+        nativeToScVal(streamId, { type: "u64" }),
+      );
+
+      const result = await this._submitTx(await this._getPayerAddress() || "", operation);
+      const amount = scValToNative(result.returnValue) as bigint;
+      telemetry.recordMethod("cancelStream", true, Date.now() - startTime);
+      return amount;
+    } catch (error) {
+      telemetry.recordMethod("cancelStream", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  async getStream(streamId: string): Promise<Stream> {
+    const startTime = Date.now();
+    try {
+      const operation = this.contract.call(
+        "get_stream",
+        nativeToScVal(streamId, { type: "u64" }),
+      );
+
+      const raw = (await this._simulateView(operation)) as Record<string, unknown>;
+      const stream: Stream = {
+        id: streamId,
+        invoiceId: raw.invoiceId as string,
+        payer: raw.payer as string,
+        amountPerLedger: toBigInt(raw.amountPerLedger ?? raw.amount_per_ledger),
+        startLedger: Number(raw.startLedger ?? raw.start_ledger),
+        status: (raw.status as string).toLowerCase() as "active" | "settled" | "cancelled",
+      };
+
+      telemetry.recordMethod("getStream", true, Date.now() - startTime);
+      return stream;
+    } catch (error) {
+      telemetry.recordMethod("getStream", false, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  computeAccruedAmount(stream: Stream, currentLedger: number): bigint {
+    if (stream.status !== "active") return 0n;
+    const ledgersPassed = Math.max(0, currentLedger - stream.startLedger);
+    return stream.amountPerLedger * BigInt(ledgersPassed);
   }
 
   // ---------------------------------------------------------------------------

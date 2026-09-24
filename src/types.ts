@@ -2170,3 +2170,16 @@ export interface MatchPledge {
   matchedAmount: bigint;
   unmatched: bigint;
 }
+
+// ---------------------------------------------------------------------------
+// Streaming Types (Issue #868)
+// ---------------------------------------------------------------------------
+
+export interface Stream {
+  id: string;
+  invoiceId: string;
+  payer: string;
+  amountPerLedger: bigint;
+  startLedger: number;
+  status: "active" | "settled" | "cancelled";
+}
